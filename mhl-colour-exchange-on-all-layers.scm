@@ -24,114 +24,83 @@
 ;==============================================================================
 ;Tested on GIMP 2.10.18
 
+
 (define (mhl-ceoal-get-linked-flag item
-								   linked-only)
-	(if 
-	  (or
-		(and (= TRUE linked-only)
-			 (= TRUE (car (gimp-item-get-linked item))))
-		(= FALSE linked-only))
-	  FALSE
-	  TRUE))
+                                   linked-only)
+  (if
+    (or
+      (and (= TRUE linked-only)
+           (= TRUE (car (gimp-item-get-linked item))))
+      (= FALSE linked-only))
+    ; than
+    FALSE
+    ; else
+    TRUE))
 
-(define (mhl-ceoal-get-group-layers group
-									visible-only
-									linked-only)
+
+(define (mhl-ceoal-get-layers list-of-layers
+                              visible-only
+                              linked-only)
   (define layers '())
 
   (for-each
 
-	(lambda (layer)
-	  (if
-		(or
-		  (and (= TRUE visible-only)
-			   (= TRUE (car (gimp-item-get-visible layer))))
-		  (= FALSE visible-only))
-		(if
-		  (= TRUE (car (gimp-item-is-group layer)))
-		  ; than
-		  (set! layers
-			(append layers
-					(mhl-ceoal-get-group-layers
-					  layer
-					  visible-only
-					  (mhl-ceoal-get-linked-flag layer
-												 linked-only))))
-		  ; else
-		  (if
-			(or
-			  (and (= TRUE linked-only)
-				   (= TRUE (car (gimp-item-get-linked layer))))
-			  (= FALSE linked-only))
-			(set! layers (append layers
-								 (list layer)))))))
+    (lambda (layer)
+      (if
+        (or
+          (and (= TRUE visible-only)
+               (= TRUE (car (gimp-item-get-visible layer))))
+          (= FALSE visible-only))
+        (if
+          ( = TRUE (car (gimp-item-is-group layer)))
 
-	; list of layers in a group
-	(vector->list (cadr (gimp-item-get-children group))))
+          ;than
+          (set! layers
+            (append layers
+                    (mhl-ceoal-get-layers (gimp-item-get-children layer)
+                                          visible-only
+                                          (mhl-ceoal-get-linked-flag
+                                            layer
+                                            linked-only))))
 
-  layers)
+          ;else
+          (if
+            (or
+              (and (= TRUE linked-only)
+                   (= TRUE (car (gimp-item-get-linked layer))))
+              (= FALSE linked-only))
+            (set! layers (append layers
+                                 (list layer)))))))
 
-(define (mhl-ceoal-get-layers image
-							  visible-only
-							  linked-only)
-  (define layers '())
-
-  (for-each
-
-	(lambda (layer)
-	  (if
-		(or
-		  (and (= TRUE visible-only)
-			   (= TRUE (car (gimp-item-get-visible layer))))
-		  (= FALSE visible-only))
-		(if
-		  ( = TRUE (car (gimp-item-is-group layer)))
-		  ;than
-		  (set! layers
-			(append layers
-					(mhl-ceoal-get-group-layers
-					  layer
-					  visible-only
-					  (mhl-ceoal-get-linked-flag layer
-												 linked-only))))
-		  ;else
-		  (if
-			(or
-			  (and (= TRUE linked-only)
-				   (= TRUE (car (gimp-item-get-linked layer))))
-			  (= FALSE linked-only))
-			(set! layers (append layers
-								 (list layer)))))))
-
-	; list of layers in the image
-	(vector->list (cadr (gimp-image-get-layers image))))
+    ; list of layers
+    (vector->list (cadr list-of-layers)))
 
   layers)
 
 
 (define (mhl-ceoal image
-				   first-color
-				   second-color
-				   visible-only
-				   linked-only)
+                   first-color
+                   second-color
+                   visible-only
+                   linked-only)
 
   ; Start of the undo group
   (gimp-image-undo-group-start image)
 
   (for-each (lambda (layer)
-					(plug-in-exchange 1
-									  image
-									  layer
-									  (car		first-color)
-									  (cadr		first-color)
-									  (caddr	first-color)
-									  (car		second-color)
-									  (cadr		second-color)
-									  (caddr	second-color)
-									  0 0 0))
-			(mhl-ceoal-get-layers image
-								  visible-only
-								  linked-only))
+              (plug-in-exchange 1
+                                image
+                                layer
+                                (car   first-color)
+                                (cadr  first-color)
+                                (caddr first-color)
+                                (car   second-color)
+                                (cadr  second-color)
+                                (caddr second-color)
+                                0 0 0))
+            (mhl-ceoal-get-layers (gimp-image-get-layers image)
+                                  visible-only
+                                  linked-only))
 
   ; End of the undo group
   (gimp-image-undo-group-end image)
@@ -141,16 +110,16 @@
 
 
 (script-fu-register "mhl-ceoal"
-					_"<Image>/Script-Fu/MHL-Colour Exchange on All Layers"
+                    _"<Image>/Script-Fu/MHL-Colour Exchange on All Layers"
                     "Swap one colour with another on several layers"
                     "MHL <mhl@localhost>"
                     "MHL"
                     "2020"
                     "*"
                     SF-IMAGE "Image" 0
-					SF-COLOR "From colour" '(255 0 0)
-					SF-COLOR "To colour" '(0 255 0)
-					SF-TOGGLE "Visible layers only" TRUE
-					SF-TOGGLE "Linked layers only" FALSE
-)
+                    SF-COLOR "From colour" '(255 0 0)
+                    SF-COLOR "To colour"   '(0 255 0)
+                    SF-TOGGLE "Visible layers only" TRUE
+                    SF-TOGGLE "Linked layers only"  FALSE
+                    )
 
