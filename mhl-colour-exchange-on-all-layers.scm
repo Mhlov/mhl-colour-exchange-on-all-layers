@@ -32,7 +32,7 @@
       (and (= TRUE linked-only)
            (= TRUE (car (gimp-item-get-linked item))))
       (= FALSE linked-only))
-    ; than
+    ; then
     FALSE
     ; else
     TRUE))
@@ -54,7 +54,7 @@
         (if
           ( = TRUE (car (gimp-item-is-group layer)))
 
-          ;than
+          ;then
           (set! layers
             (append layers
                     (mhl-ceoal-get-layers (gimp-item-get-children layer)
