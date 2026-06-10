@@ -4,7 +4,7 @@
 ;
 ;Swap one colour with another on several layers
 ;
-;Copyright (C) 2019-2026 Melon (https://github.com/Mhlov)
+;Copyright (C) 2019 Melon (https://github.com/Mhlov)
 ;
 ; LICENSE
 ;
@@ -22,11 +22,25 @@
 ;    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 ;==============================================================================
-;Tested on GIMP 3.2.4
+;Tested on GIMP 2.10.18
+
+
+(define (mhl-ceoal-get-linked-flag item
+                                   linked-only)
+  (if
+    (or
+      (and (= TRUE linked-only)
+           (= TRUE (car (gimp-item-get-linked item))))
+      (= FALSE linked-only))
+    ; then
+    FALSE
+    ; else
+    TRUE))
+
 
 (define (mhl-ceoal-get-layers list-of-layers
-                              visible-only)
-
+                              visible-only
+                              linked-only)
   (define layers '())
 
   (for-each
@@ -44,14 +58,22 @@
           (set! layers
             (append layers
                     (mhl-ceoal-get-layers (gimp-item-get-children layer)
-                                          visible-only)))
+                                          visible-only
+                                          (mhl-ceoal-get-linked-flag
+                                            layer
+                                            linked-only))))
 
           ;else
-          (set! layers (append layers
-                               (list layer))))))
+          (if
+            (or
+              (and (= TRUE linked-only)
+                   (= TRUE (car (gimp-item-get-linked layer))))
+              (= FALSE linked-only))
+            (set! layers (append layers
+                                 (list layer)))))))
 
     ; list of layers
-    (vector->list (car list-of-layers)))
+    (vector->list (cadr list-of-layers)))
 
   layers)
 
@@ -60,29 +82,25 @@
                    first-color
                    second-color
                    visible-only
-                   selected-only)
+                   linked-only)
 
   ; Start of the undo group
   (gimp-image-undo-group-start image)
 
   (for-each (lambda (layer)
-              (gimp-drawable-merge-new-filter layer
-                                              "gegl:color-exchange"
-                                              ""                    ; filter name
-                                              1.0                   ; opacity
-                                              LAYER-MODE-REPLACE    ; blend mode
-                                              #:from-color      first-color
-                                              #:to-color        second-color
-                                              #:red-threshold   0
-                                              #:green-threshold 0
-                                              #:blue-threshold  0))
-
-            (mhl-ceoal-get-layers (if (= TRUE selected-only)
-                                      ;then
-                                      (gimp-image-get-selected-layers image)
-                                      ;else
-                                      (gimp-image-get-layers image))
-                                  visible-only))
+              (plug-in-exchange 1
+                                image
+                                layer
+                                (car   first-color)
+                                (cadr  first-color)
+                                (caddr first-color)
+                                (car   second-color)
+                                (cadr  second-color)
+                                (caddr second-color)
+                                0 0 0))
+            (mhl-ceoal-get-layers (gimp-image-get-layers image)
+                                  visible-only
+                                  linked-only))
 
   ; End of the undo group
   (gimp-image-undo-group-end image)
@@ -92,7 +110,7 @@
 
 
 (script-fu-register "mhl-ceoal"
-                    "Colour Exchange on All Layers"
+                    _"<Image>/Script-Fu/MHL-Colour Exchange on All Layers"
                     "Swap one colour with another on several layers"
                     "MHL <mhl@localhost>"
                     "MHL"
@@ -100,10 +118,8 @@
                     "*"
                     SF-IMAGE "Image" 0
                     SF-COLOR "From colour" '(255 0 0)
-                    SF-COLOR "To colour"   '(0 0 0)
-                    SF-TOGGLE "Visible layers only"  TRUE
-                    SF-TOGGLE "Selected layers only" FALSE
+                    SF-COLOR "To colour"   '(0 255 0)
+                    SF-TOGGLE "Visible layers only" TRUE
+                    SF-TOGGLE "Linked layers only"  FALSE
                     )
 
-(script-fu-menu-register "mhl-ceoal"
-                         "<Image>/Filters/MHL")
